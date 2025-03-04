@@ -30,6 +30,10 @@ def save_contacts_data(contacts):
         json.dump(contacts, f, indent=4)
 
 # Routes
+@app.route("/")
+def home():
+    return "Flask is running successfully!"
+
 @app.route('/api/contacts', methods=['GET'])
 def get_contacts():
     contacts = get_contacts_data()
