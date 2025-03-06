@@ -6,14 +6,19 @@ from datetime import datetime
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
-class User(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+class Users(db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)  # Indexed for faster lookups
+    password_hash = db.Column(db.String(255), nullable=True)  # Nullable for OAuth users
+    oauth_provider = db.Column(db.String(50), nullable=True)  # 'google', 'github', etc.
+    oauth_id = db.Column(db.String(255), unique=True, nullable=True)  # Unique OAuth user ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    contacts = db.relationship('Contact', backref='user', lazy=True)
+    contacts = db.relationship('Contacts', backref='user', lazy=True)
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -23,29 +28,33 @@ class User(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "email": self.email,
+            "oauth_provider": self.oauth_provider,
             "created_at": self.created_at.isoformat()
         }
 
-class Contact(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+class Contacts(db.Model):
+    __tablename__ = 'contacts'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(20))
-    categories = db.Column(db.JSON, default=[])
+    categories = db.Column(db.JSON, default=[])  # Keep JSON if using PostgreSQL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)  # Link to User
+    user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False, index=True)  # Indexed for better performance
 
     def to_dict(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "email": self.email,
             "phone": self.phone,
             "categories": self.categories,
             "created_at": self.created_at.isoformat(),
-            "user_id": self.user_id
+            "user_id": str(self.user_id)
         }
