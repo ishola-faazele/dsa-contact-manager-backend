@@ -1,11 +1,11 @@
-from flask import Flask, request, jsonify, redirect, url_for
-from flask_dance.contrib.google import make_google_blueprint, google
+from flask import Flask, request, jsonify #, redirect, url_for
+from flask_dance.contrib.google import make_google_blueprint#, google
 from flask_cors import CORS
 from flask_migrate import Migrate
 import os
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
 from models import Users, Contacts, db
-from flask_login import LoginManager, login_user, logout_user
+# from flask_login import LoginManager, logout_user
 from dotenv import load_dotenv
 
 app = Flask(__name__)
@@ -27,8 +27,8 @@ migrate = Migrate(app, db)
 
 jwt = JWTManager(app)
 
-login_manager = LoginManager()
-login_manager.init_app(app)
+# login_manager = LoginManager()
+# login_manager.init_app(app)
 
 # Google OAuth Configuration
 google_bp = make_google_blueprint(
@@ -38,51 +38,37 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-@login_manager.user_loader
-def load_user(user_id):
-    return Users.query.get(int(user_id))
-
-@app.route('/login/google')
-def google_auth():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
-
-    resp = google.get("/oauth2/v2/userinfo")
-    if resp.ok:
-        user_info = resp.json()
-        email = user_info["email"]
-        name = user_info.get("name", "")
-        oauth_id = user_info.get("id")
-        oauth_provider = "google"
-
-        user = Users.query.filter_by(oauth_provider=oauth_provider, oauth_id=oauth_id).first()
-        if not user:
-            user = Users(name=name, email=email, oauth_provider=oauth_provider, oauth_id=oauth_id)
-            db.session.add(user)
-            db.session.commit()
-
-        login_user(user)
-        access_token = create_access_token(identity=user.id)
-        return jsonify({
-            "message": "Login successful",
-            "access_token": access_token,
-            "user": user.to_dict()
-        })
-
-    return jsonify({"error": "Google authentication failed"}), 400
-
-# Logout
-@app.route("/logout")
-@jwt_required()
-def logout():
-    logout_user()
-    return jsonify({"message": "Logged out successfully"})
-
+# @login_manager.user_loader
+# def load_user(user_id):
+#     return Users.query.get(int(user_id))
 
 @app.route("/")
 def home():
     return "Flask is running successfully!"
 
+@app.route('/login/google', methods=['POST'])
+def google_auth():
+    data = request.json
+    if not data or not data.get('email') or not data.get('oauth_id'):
+        return jsonify({"error": "Invalid request data"}), 400
+
+    email = data["email"]
+    name = data.get("name", "")
+    oauth_id = data["oauth_id"]
+    oauth_provider = data.get("oauth_provider", "google")
+
+    user = Users.query.filter_by(oauth_provider=oauth_provider, oauth_id=oauth_id).first()
+    if not user:
+        user = Users(name=name, email=email, oauth_provider=oauth_provider, oauth_id=oauth_id)
+        db.session.add(user)
+        db.session.commit()
+
+    access_token = create_access_token(identity=user.id)
+    return jsonify({
+        "message": "Login successful",
+        "access_token": access_token,
+        "user": user.to_dict()
+    })
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -101,6 +87,13 @@ def register():
 
     return jsonify({'message': 'User registered successfully'}), 201
 
+# Logout
+@app.route("/logout")
+@jwt_required()
+def logout():
+    # logout_user()
+    return jsonify({"message": "Token revoked (implement token blacklist)"}), 200
+
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -114,25 +107,6 @@ def login():
 
     access_token = create_access_token(identity=user.id)
     return jsonify({'access_token': access_token, 'user': user.to_dict()}), 200
-
-
-@app.route('/api/contacts', methods=['GET'])
-@jwt_required()
-def get_contacts():
-    user_id = get_jwt_identity()
-    contacts = Contacts.query.filter_by(user_id=user_id).all()
-    return jsonify([contact.to_dict() for contact in contacts])
-
-
-@app.route('/api/contacts/<int:id>', methods=['GET'])
-@jwt_required()
-def get_contact(id):
-    user_id = get_jwt_identity()
-    contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
-    if not contact:
-        return jsonify({'error': 'Contact not found'}), 404
-    return jsonify(contact.to_dict())
-
 
 @app.route('/api/contacts', methods=['POST'])
 @jwt_required()
@@ -155,6 +129,24 @@ def create_contact():
     db.session.commit()
 
     return jsonify(new_contact.to_dict()), 201
+
+@app.route('/api/contacts', methods=['GET'])
+@jwt_required()
+def get_contacts():
+    user_id = get_jwt_identity()
+    contacts = Contacts.query.filter_by(user_id=user_id).all()
+    return jsonify([contact.to_dict() for contact in contacts])
+
+
+# @app.route('/api/contacts/<int:id>', methods=['GET'])
+# @jwt_required()
+# def get_contact(id):
+#     user_id = get_jwt_identity()
+#     contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
+#     if not contact:
+#         return jsonify({'error': 'Contact not found'}), 404
+#     return jsonify(contact.to_dict())
+
 
 
 @app.route('/api/contacts/<int:id>', methods=['PUT'])
@@ -191,29 +183,29 @@ def delete_contact(id):
     return jsonify({'message': 'Contact deleted successfully'}), 200
 
 
-@app.route('/api/contacts/search', methods=['GET'])
-@jwt_required()
-def search_and_sort_contacts():
-    user_id = get_jwt_identity()
-    search_term = request.args.get('query', '')
-    sort_by = request.args.get('sort_by', 'name')
-    order = request.args.get('order', 'asc')
+# @app.route('/api/contacts/search', methods=['GET'])
+# @jwt_required()
+# def search_and_sort_contacts():
+#     user_id = get_jwt_identity()
+#     search_term = request.args.get('query', '')
+#     sort_by = request.args.get('sort_by', 'name')
+#     order = request.args.get('order', 'asc')
 
-    contacts_query = Contacts.query.filter_by(user_id=user_id)
+#     contacts_query = Contacts.query.filter_by(user_id=user_id)
 
-    if search_term:
-        pattern = f"%{search_term}%"
-        contacts_query = contacts_query.filter(
-            (Contacts.name.ilike(pattern)) | (Contacts.email.ilike(pattern))
-        )
+#     if search_term:
+#         pattern = f"%{search_term}%"
+#         contacts_query = contacts_query.filter(
+#             (Contacts.name.ilike(pattern)) | (Contacts.email.ilike(pattern)) | (Contacts.phone.ilike(pattern))
+#         )
 
-    if sort_by in ['name', 'created_at']:
-        contacts_query = contacts_query.order_by(
-            getattr(Contacts, sort_by).desc() if order == 'desc' else getattr(Contacts, sort_by).asc()
-        )
+#     if sort_by in ['name', 'created_at']:
+#         contacts_query = contacts_query.order_by(
+#             getattr(Contacts, sort_by).desc() if order == 'desc' else getattr(Contacts, sort_by).asc()
+#         )
 
-    contacts = contacts_query.all()
-    return jsonify([contact.to_dict() for contact in contacts])
+#     contacts = contacts_query.all()
+#     return jsonify([contact.to_dict() for contact in contacts])
 
 
 if __name__ == '__main__':
