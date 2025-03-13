@@ -7,6 +7,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from models import Users, Contacts, db
 # from flask_login import LoginManager, logout_user
 from dotenv import load_dotenv
+import uuid
 
 app = Flask(__name__)
 CORS(app)
@@ -91,7 +92,6 @@ def register():
 @app.route("/logout")
 @jwt_required()
 def logout():
-    # logout_user()
     return jsonify({"message": "Token revoked (implement token blacklist)"}), 200
 
 
@@ -138,20 +138,22 @@ def get_contacts():
     return jsonify([contact.to_dict() for contact in contacts])
 
 
-# @app.route('/api/contacts/<int:id>', methods=['GET'])
-# @jwt_required()
-# def get_contact(id):
-#     user_id = get_jwt_identity()
-#     contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
-#     if not contact:
-#         return jsonify({'error': 'Contact not found'}), 404
-#     return jsonify(contact.to_dict())
+@app.route('/api/contacts/<string:id>', methods=['GET'])
+@jwt_required()
+def get_contact(id):
+    id = uuid.UUID(id)
+    user_id = get_jwt_identity()
+    contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
+    if not contact:
+        return jsonify({'error': 'Contact not found'}), 404
+    return jsonify(contact.to_dict())
 
 
 
-@app.route('/api/contacts/<int:id>', methods=['PUT'])
+@app.route('/api/contacts/<string:id>', methods=['PUT'])
 @jwt_required()
 def update_contact(id):
+    id = uuid.UUID(id)
     user_id = get_jwt_identity()
     contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
 
@@ -168,9 +170,10 @@ def update_contact(id):
     return jsonify(contact.to_dict())
 
 
-@app.route('/api/contacts/<int:id>', methods=['DELETE'])
+@app.route('/api/contacts/<string:id>', methods=['DELETE'])
 @jwt_required()
 def delete_contact(id):
+    id = uuid.UUID(id)
     user_id = get_jwt_identity()
     contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
 
