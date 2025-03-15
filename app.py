@@ -114,6 +114,8 @@ def create_contact():
         email=data['email'],
         phone=data.get('phone', ''),
         categories=data.get('categories', []),
+        status=data.get('status', 'active'),
+        favorite=data.get('favorite', False),
         user_id=user_id
     )
 
@@ -157,10 +159,50 @@ def update_contact(id):
     contact.email = data.get('email', contact.email)
     contact.phone = data.get('phone', contact.phone)
     contact.categories = data.get('categories', contact.categories)
+    contact.status = data.get('status', contact.status)  
+    contact.favorite = data.get('favorite', contact.favorite)
 
     db.session.commit()
     return jsonify(contact.to_dict())
 
+@app.route('/api/contacts/<string:id>/toggle-favorite', methods=['PATCH'])
+@jwt_required()
+def toggle_favorite(id):
+    id = uuid.UUID(id)
+    user_id = get_jwt_identity()
+    contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
+    
+    if not contact:
+        return jsonify({'error': 'Contact not found'}), 404
+    
+    contact.favorite = not contact.favorite
+    db.session.commit()
+    
+    return jsonify({'message': 'Favorite status updated', 'favorite': contact.favorite})
+
+@app.route('/api/contacts/<string:id>/set-status', methods=['PATCH'])
+@jwt_required()
+def set_status(id):
+    id = uuid.UUID(id)
+    user_id = get_jwt_identity()
+    contact = Contacts.query.filter_by(id=id, user_id=user_id).first()
+    
+    if not contact:
+        return jsonify({'error': 'Contact not found'}), 404
+    
+    data = request.json
+    if not data or not data.get('status'):
+        return jsonify({'error': 'Status is required'}), 400
+    
+    # Validate status
+    valid_statuses = ['active', 'blocked', 'bin']
+    if data['status'] not in valid_statuses:
+        return jsonify({'error': f'Status must be one of: {", ".join(valid_statuses)}'}), 400
+    
+    contact.status = data['status']
+    db.session.commit()
+    
+    return jsonify({'message': 'Status updated', 'status': contact.status})
 
 @app.route('/api/contacts/<string:id>', methods=['DELETE'])
 @jwt_required()
