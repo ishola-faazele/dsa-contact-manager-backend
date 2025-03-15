@@ -43,9 +43,12 @@ class Contacts(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(20))
-    categories = db.Column(db.JSON, default=[])  # Keep JSON if using PostgreSQL
+    categories = db.Column(db.JSON, default=[]) 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    status = db.Column(db.String(20), default='active', nullable=False)
+    favorite = db.Column(db.Boolean, default=False, nullable=False)
+    
     user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False, index=True)  # Indexed for better performance
 
     def to_dict(self):
@@ -56,5 +59,7 @@ class Contacts(db.Model):
             "phone": self.phone,
             "categories": self.categories,
             "created_at": self.created_at.isoformat(),
+            "status": self.status,
+            "favorite": self.favorite,
             "user_id": str(self.user_id)
         }

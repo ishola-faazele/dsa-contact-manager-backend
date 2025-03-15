@@ -1,11 +1,10 @@
-from flask import Flask, request, jsonify #, redirect, url_for
-from flask_dance.contrib.google import make_google_blueprint#, google
+from flask import Flask, request, jsonify
+from flask_dance.contrib.google import make_google_blueprint
 from flask_cors import CORS
 from flask_migrate import Migrate
 import os
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
 from models import Users, Contacts, db
-# from flask_login import LoginManager, logout_user
 from dotenv import load_dotenv
 import uuid
 
@@ -28,9 +27,6 @@ migrate = Migrate(app, db)
 
 jwt = JWTManager(app)
 
-# login_manager = LoginManager()
-# login_manager.init_app(app)
-
 # Google OAuth Configuration
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
@@ -39,9 +35,6 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-# @login_manager.user_loader
-# def load_user(user_id):
-#     return Users.query.get(int(user_id))
 
 @app.route("/")
 def home():
@@ -113,7 +106,6 @@ def login():
 def create_contact():
     user_id = get_jwt_identity()
     data = request.json
-
     if not data or not data.get('name') or not data.get('email'):
         return jsonify({'error': 'Name and email are required'}), 400
 
@@ -184,31 +176,6 @@ def delete_contact(id):
     db.session.commit()
 
     return jsonify({'message': 'Contact deleted successfully'}), 200
-
-
-# @app.route('/api/contacts/search', methods=['GET'])
-# @jwt_required()
-# def search_and_sort_contacts():
-#     user_id = get_jwt_identity()
-#     search_term = request.args.get('query', '')
-#     sort_by = request.args.get('sort_by', 'name')
-#     order = request.args.get('order', 'asc')
-
-#     contacts_query = Contacts.query.filter_by(user_id=user_id)
-
-#     if search_term:
-#         pattern = f"%{search_term}%"
-#         contacts_query = contacts_query.filter(
-#             (Contacts.name.ilike(pattern)) | (Contacts.email.ilike(pattern)) | (Contacts.phone.ilike(pattern))
-#         )
-
-#     if sort_by in ['name', 'created_at']:
-#         contacts_query = contacts_query.order_by(
-#             getattr(Contacts, sort_by).desc() if order == 'desc' else getattr(Contacts, sort_by).asc()
-#         )
-
-#     contacts = contacts_query.all()
-#     return jsonify([contact.to_dict() for contact in contacts])
 
 
 if __name__ == '__main__':
