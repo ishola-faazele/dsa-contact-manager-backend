@@ -63,3 +63,25 @@ class Contacts(db.Model):
             "favorite": self.favorite,
             "user_id": str(self.user_id)
         }
+
+
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+
+    id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False, index=True)  # Indexed for better performance
+    action = db.Column(db.String(50), nullable=False)
+    action_type = db.Column(db.String(50), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    contact_name = db.Column(db.String(50), nullable=False)
+    
+    user = db.relationship("Users", backref="activities")
+    
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "action": self.action,
+            "timestamp": self.timestamp.isoformat(),
+            "contact_id": str(self.contact_id) if self.contact_id else None
+        }

@@ -4,7 +4,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 import os
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, JWTManager
-from models import Users, Contacts, db
+from models import Users, Contacts, db, ActivityLog
 from dotenv import load_dotenv
 import uuid
 
@@ -120,6 +120,13 @@ def create_contact():
     )
 
     db.session.add(new_contact)
+    
+    activity_log = ActivityLog(
+        user_id=user_id,
+        action='added',
+        contact_name= data['name']
+    )
+    db.session.add(activity_log)
     db.session.commit()
 
     return jsonify(new_contact.to_dict()), 201
@@ -142,7 +149,12 @@ def get_contact(id):
         return jsonify({'error': 'Contact not found'}), 404
     return jsonify(contact.to_dict())
 
-
+@app.route('/api/activity-logs/<string:id>', methods=['GET'])
+@jwt_required()
+def get_activity_log():
+    user_id = get_jwt_identity()
+    activity_log = ActivityLog.query.filter_by(user_id=user_id).all()
+    return jsonify([activity_log.to_dict() for activity_log in activity_log])
 
 @app.route('/api/contacts/<string:id>', methods=['PUT'])
 @jwt_required()
@@ -163,6 +175,12 @@ def update_contact(id):
     contact.favorite = data.get('favorite', contact.favorite)
 
     db.session.commit()
+    activity = ActivityLog(
+        user_id=user_id,
+        action='updated',
+        contact_name= contact.name
+    )
+    db.session.add(activity)
     return jsonify(contact.to_dict())
 
 @app.route('/api/contacts/<string:id>/toggle-favorite', methods=['PATCH'])
@@ -176,6 +194,14 @@ def toggle_favorite(id):
         return jsonify({'error': 'Contact not found'}), 404
     
     contact.favorite = not contact.favorite
+    activity = ActivityLog(
+        user_id=user_id,
+        action='toggle_favorite',
+        contact_name= contact.name,
+        action_type=contact.favorite
+    )
+    db.session.add(activity)
+    
     db.session.commit()
     
     return jsonify({'message': 'Favorite status updated', 'favorite': contact.favorite})
@@ -200,6 +226,13 @@ def set_status(id):
         return jsonify({'error': f'Status must be one of: {", ".join(valid_statuses)}'}), 400
     
     contact.status = data['status']
+    activity = ActivityLog(
+        user_id=user_id,
+        action='set_status',
+        contact_name= contact.name,
+        action_type=data['status']
+    )
+    db.session.add(activity)
     db.session.commit()
     
     return jsonify({'message': 'Status updated', 'status': contact.status})
@@ -214,6 +247,12 @@ def delete_contact(id):
     if not contact:
         return jsonify({'error': 'Contact not found'}), 404
 
+    activity = ActivityLog(
+        user_id=user_id,
+        action='deleted',
+        contact_name= contact.name
+    )
+    db.session.add(activity)
     db.session.delete(contact)
     db.session.commit()
 
