@@ -83,5 +83,5 @@ class ActivityLog(db.Model):
             "user_id": str(self.user_id),
             "action": self.action,
             "timestamp": self.timestamp.isoformat(),
-            "contact_id": str(self.contact_id) if self.contact_id else None
+            "contact_name": self.contact_name
         }

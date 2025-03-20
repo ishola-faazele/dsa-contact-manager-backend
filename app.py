@@ -7,9 +7,11 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from models import Users, Contacts, db, ActivityLog
 from dotenv import load_dotenv
 import uuid
-
+import datetime
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
+# Replace the simple CORS(app) with this:
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000", "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], "allow_headers": "*"}})
 load_dotenv()  
 
 DB_USER = os.getenv("DB_USER")
@@ -122,8 +124,10 @@ def create_contact():
     db.session.add(new_contact)
     
     activity_log = ActivityLog(
-        user_id=user_id,
+        user_id = user_id,
+        timestamp=datetime.datetime.now(),
         action='added',
+        action_type='',
         contact_name= data['name']
     )
     db.session.add(activity_log)
@@ -149,12 +153,12 @@ def get_contact(id):
         return jsonify({'error': 'Contact not found'}), 404
     return jsonify(contact.to_dict())
 
-@app.route('/api/activity-logs/<string:id>', methods=['GET'])
+@app.route('/api/user-activities', methods=['GET'])
 @jwt_required()
-def get_activity_log():
+def get_user_activities():
     user_id = get_jwt_identity()
-    activity_log = ActivityLog.query.filter_by(user_id=user_id).all()
-    return jsonify([activity_log.to_dict() for activity_log in activity_log])
+    user_activities = ActivityLog.query.filter_by(user_id=user_id).all()
+    return jsonify([user_activity.to_dict() for user_activity in user_activities])
 
 @app.route('/api/contacts/<string:id>', methods=['PUT'])
 @jwt_required()
@@ -175,9 +179,11 @@ def update_contact(id):
     contact.favorite = data.get('favorite', contact.favorite)
 
     db.session.commit()
-    activity = ActivityLog(
-        user_id=user_id,
+    activity = ActivityLog(\
+        user_id = user_id,
+        timestamp=datetime.datetime.now(),
         action='updated',
+        action_type='',
         contact_name= contact.name
     )
     db.session.add(activity)
@@ -196,9 +202,10 @@ def toggle_favorite(id):
     contact.favorite = not contact.favorite
     activity = ActivityLog(
         user_id=user_id,
+        timestamp=datetime.datetime.now(),
         action='toggle_favorite',
         contact_name= contact.name,
-        action_type=contact.favorite
+        action_type="favorite" if contact.favorite else "not favorite"
     )
     db.session.add(activity)
     
@@ -228,6 +235,7 @@ def set_status(id):
     contact.status = data['status']
     activity = ActivityLog(
         user_id=user_id,
+        timestamp=datetime.now(),
         action='set_status',
         contact_name= contact.name,
         action_type=data['status']
@@ -250,6 +258,8 @@ def delete_contact(id):
     activity = ActivityLog(
         user_id=user_id,
         action='deleted',
+        action_type='',
+        timestamp=datetime.datetime.now(),
         contact_name= contact.name
     )
     db.session.add(activity)
