@@ -205,7 +205,7 @@ def toggle_favorite(id):
         timestamp=datetime.datetime.now(),
         action='toggle_favorite',
         contact_name= contact.name,
-        action_type="favorite" if contact.favorite else "not favorite"
+        action_type="not favorite" if contact.favorite else "favorite"
     )
     db.session.add(activity)
     
@@ -235,7 +235,7 @@ def set_status(id):
     contact.status = data['status']
     activity = ActivityLog(
         user_id=user_id,
-        timestamp=datetime.now(),
+        timestamp=datetime.datetime.now(),
         action='set_status',
         contact_name= contact.name,
         action_type=data['status']
