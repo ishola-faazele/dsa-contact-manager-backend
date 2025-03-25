@@ -9,9 +9,8 @@ from dotenv import load_dotenv
 import uuid
 import datetime
 app = Flask(__name__)
-# CORS(app)
-# Replace the simple CORS(app) with this:
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000", "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], "allow_headers": "*"}})
+CORS(app)
+# CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000", "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], "allow_headers": "*"}})
 load_dotenv()  
 
 DB_USER = os.getenv("DB_USER")
